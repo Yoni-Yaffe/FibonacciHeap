@@ -1,3 +1,5 @@
+import java.util.Arrays;
+
 /**
  * FibonacciHeap
  *
@@ -6,7 +8,8 @@
 public class FibonacciHeap
 {
     public HeapNode min_node, first_node;
-    public int heap_size, links_counter, cuts_counter;
+    public int heap_size, marked_counter, trees_counter;
+    public static int links_counter = 0, cuts_counter = 0;
     public boolean isRoot(HeapNode node){
         return node.parent == null;
     }
@@ -20,7 +23,20 @@ public class FibonacciHeap
     {
     	return min_node == null; // should be replaced by student code
     }
-		
+
+    public int getNumOfTrees(){
+        if(isEmpty())
+            return 0;
+        int counter = 1;
+        HeapNode node= first_node;
+        node= node.next;
+        while(node != first_node){
+            counter++;
+            node = node.next;
+        }
+        return counter;
+
+    }
    /**
     * public HeapNode insert(int key)
     *
@@ -31,6 +47,7 @@ public class FibonacciHeap
     */
     public HeapNode insert(int key)
     {
+        trees_counter++;
         if(heap_size == 0){
             HeapNode node = new HeapNode(key);
             first_node = node;
@@ -52,7 +69,7 @@ public class FibonacciHeap
 
     public void consolidation(){
         //insert to buckets
-        HeapNode[] B = new HeapNode[2*(int)(Math.ceil(Math.log(heap_size)/Math.log(2.0)))];
+        HeapNode[] B = new HeapNode[2*(int)(Math.ceil(Math.log(heap_size)/Math.log(2.0)))+1];
         first_node.prev.next = null;
         HeapNode x = first_node;
         while(x != null){
@@ -128,6 +145,8 @@ public class FibonacciHeap
         heap_size += heap2.size();
         if(heap2.min_node.getKey() < min_node.key)
             min_node = heap2.min_node;
+        trees_counter += heap2.trees_counter;
+        marked_counter += heap2.marked_counter;
     }
 
     public HeapNode connect(HeapNode node1, HeapNode node2){
@@ -167,18 +186,39 @@ public class FibonacciHeap
     {
     	return heap_size; // should be replaced by student code
     }
+
+    public int getLargestRank(){
+        if(isEmpty())
+            return 0;
+        int max = first_node.rank;
+        HeapNode node = first_node;
+        node = node.next;
+        while(node != first_node){
+            if(node.rank > max)
+                max = node.rank;
+            node = node.next;
+        }
+        return max;
+    }
     	
     /**
     * public int[] countersRep()
     *
     * Return an array of counters. The i-th entry contains the number of trees of order i in the heap.
-    * Note: The size of of the array depends on the maximum order of a tree, and an empty heap returns an empty array.
+    * Note: The size of the array depends on the maximum order of a tree, and an empty heap returns an empty array.
     * 
     */
     public int[] countersRep()
     {
-    	int[] arr = new int[100];
-        return arr; //	 to be replaced by student code
+    	int[] arr = new int[getLargestRank() + 1];
+        HeapNode node = first_node;
+        arr[node.rank]++;
+        node = node.next;
+        while(node != first_node){
+            arr[node.rank]++;
+            node = node.next;
+        }
+        return arr;
     }
 	
    /**
@@ -197,15 +237,18 @@ public class FibonacciHeap
             min_node = null;
             first_node = null;
             heap_size = 0;
+            trees_counter = 0;
             return;
         }
         else if(x.rank == 0){
             x.prev.next = x.next;
             x.next.prev = x.prev;
+            trees_counter--;
         }
         else {
             HeapNode node = x.child;
             node.parent = null;
+            node.marked = false;
             node = node.next;
             while (node != x.child) {
                 node.parent = null;
@@ -224,12 +267,16 @@ public class FibonacciHeap
         else if(first_node == x)
             first_node = x.child;
         consolidation();
+        trees_counter = getNumOfTrees();
+
     }
 
     public void cut(HeapNode x){
         cuts_counter++;
         HeapNode y = x.parent;
         x.parent = null;
+        if(x.marked)
+            marked_counter--;
         x.marked = false;
         y.rank--;
         if(x == x.next) {
@@ -239,14 +286,13 @@ public class FibonacciHeap
             y.child = x.next;
             x.prev.next = x.next;
             y.child.prev = x.prev;
-            x.next = x;
-            x.prev = x;
         }
         x.next = first_node;
         x.prev = first_node.prev;
         first_node.prev =x;
         x.prev.next = x;
         first_node = x;
+        trees_counter++;
     }
     public void cascadingCut(HeapNode x){
         HeapNode y = x.parent;
@@ -257,8 +303,10 @@ public class FibonacciHeap
             cut(y);
             y = node;
         }
-        if(y.parent != null)
+        if(y.parent != null) {
             y.marked = true;
+            marked_counter++;
+        }
     }
 
    /**
@@ -289,7 +337,7 @@ public class FibonacciHeap
     */
     public int potential() 
     {    
-    	return -234; // should be replaced by student code
+    	return trees_counter+ 2 * marked_counter; // should be replaced by student code
     }
 
    /**
@@ -302,7 +350,7 @@ public class FibonacciHeap
     */
     public static int totalLinks()
     {    
-    	return -345; // should be replaced by student code
+    	return links_counter;
     }
 
    /**
@@ -314,7 +362,7 @@ public class FibonacciHeap
     */
     public static int totalCuts()
     {    
-    	return -456; // should be replaced by student code
+    	return cuts_counter;
     }
 
      /**
@@ -327,7 +375,28 @@ public class FibonacciHeap
     */
     public static int[] kMin(FibonacciHeap H, int k)
     {    
-        int[] arr = new int[100];
+        int[] arr = new int[k];
+        int index = 0;
+        FibonacciHeap tmp_heap = new FibonacciHeap();
+        tmp_heap.insert(H.min_node.key);
+        tmp_heap.min_node.original_pointer = H.min_node;
+        while(index < k){
+            HeapNode node = tmp_heap.findMin();
+            HeapNode tmp_pointer = node.original_pointer;
+            arr[index] = node.key;
+            tmp_heap.deleteMin();
+            index++;
+            HeapNode node2 = tmp_pointer.child;
+            if(node2 == null)
+                continue;
+            tmp_heap.insert(node2.key).original_pointer = node2;
+            node2 = node2.next;
+            while(node2 != node.original_pointer.child){
+                tmp_heap.insert(node2.key).original_pointer = node2;
+                node2 = node2.next;
+            }
+
+        }
         return arr; // should be replaced by student code
     }
     
@@ -342,7 +411,7 @@ public class FibonacciHeap
 
     	public int key, rank;
         public boolean marked;
-        public HeapNode next, parent, child, prev;
+        public HeapNode next, parent, child, prev, original_pointer;
 
 
 
@@ -363,13 +432,13 @@ public class FibonacciHeap
 
     public static void main(String[] args) {
         FibonacciHeap heap = new FibonacciHeap();
-        for(int i =0;i<17;i++){
+        for(int i =1;i<Math.pow(3,8);i++){
             heap.insert(i);
         }
         System.out.println(heap.size());
         heap.deleteMin();
-        heap.delete(heap.min_node.child);
-        System.out.println(heap.findMin());
+        heap.deleteMin();
+        System.out.println(heap.getNumOfTrees());
 
     }
 }
