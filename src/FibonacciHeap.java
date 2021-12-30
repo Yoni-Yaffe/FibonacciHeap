@@ -206,7 +206,7 @@ public class FibonacciHeap
      */
     public int getLargestRank(){
         if(isEmpty()) // no trees
-            return 0;
+            return -1;
         int max = first_node.rank;
         HeapNode node = first_node;
         node = node.next;
@@ -267,10 +267,14 @@ public class FibonacciHeap
         else {
             HeapNode node = x.child;
             node.parent = null;
+            if(node.marked)
+                marked_counter--;
             node.marked = false;
             node = node.next;
             while (node != x.child) {
                 node.parent = null;
+                if(node.marked)
+                    marked_counter--;
                 node.marked = false;
                 node = node.next;
             }
@@ -281,10 +285,10 @@ public class FibonacciHeap
             x.next.prev = tmp;
         }
         heap_size--;
-        if(first_node == x && x.next != x) // x is the first root and the heap and not the only one
+        if(first_node == x && x.child != null)
+            first_node = x.child;
+        else if(first_node == x) // x is the first root and the heap and not the only one
             first_node = x.next;
-        else if(first_node == x) // x is the only root in the tree
-            first_node = x.child; // x has a child because the rank of x is greater than zero
         consolidation(); //
         trees_counter = getNumOfTrees(); // update the number of trees in the heap after the consolidation
 
@@ -306,9 +310,10 @@ public class FibonacciHeap
             y.child = null;
         }
         else{
-            y.child = x.next;
+            if(x == y.child)
+                y.child = x.next;
             x.prev.next = x.next;
-            y.child.prev = x.prev;
+            x.next.prev = x.prev;
         }
         // concat x to the start of the heap
         x.next = first_node;
@@ -347,10 +352,8 @@ public class FibonacciHeap
     public void decreaseKey(HeapNode x, int delta)
     {
         x.key -= delta;
-        if(x.parent != null){ // x is not the root
-            if(x.parent.key > x.key) // if x became smaller than its parent
-                cascadingCut(x);
-        }
+        if(x.parent != null && x.parent.key > x.key) // x is not a root and his new value is smaller than its parent's key
+            cascadingCut(x);
         if(x.key < min_node.key) // update the min_node if necessary
             min_node = x;
     }
