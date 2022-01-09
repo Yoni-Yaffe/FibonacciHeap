@@ -1,5 +1,6 @@
-import java.util.Arrays;
-//Asaf Livne and Jonathan Yaffe
+//   full name           username           id
+// Jonathan Yaffe        jonathany          315097360
+//  Asaf Livne           Asaf Livne         318813722
 /**
  * FibonacciHeap
  *
@@ -447,9 +448,9 @@ public class FibonacciHeap
 
 
 
-    	public HeapNode(int int_key)
+    	public HeapNode(int key)
         {
-    		this.key = int_key;
+    		this.key = key;
             marked = false;
             next = this;
             prev = this;
